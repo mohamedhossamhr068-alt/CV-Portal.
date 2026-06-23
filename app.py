@@ -5,258 +5,480 @@ import urllib.parse
 from supabase import create_client, Client
 import pandas as pd
 
-# --- 1. الإعدادات والمفاتيح ---
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+# ─── Page Config ───────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="AI Career Portal",
+    page_icon="💼",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ─── Secrets ───────────────────────────────────────────────────────────────────
+SUPABASE_URL  = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY  = st.secrets["SUPABASE_KEY"]
+GEMINI_API_KEY = "AIzaSyA4WQJrIIbKAoflL1ty96qBZOz-12sRBpg"   # مفتاح Gemini
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- 2. إدارة اللغتين والتحكم في المظهر الاحترافي ---
-st.set_page_config(page_title="AI Career Portal", page_icon="💼", layout="wide")
+# ─── Language Selector ─────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 🌐 Language / اللغة")
+    lang = st.radio("", ["العربية", "English"], label_visibility="collapsed")
+    st.markdown("---")
+    st.markdown(
+        "<div style='font-size:12px; color:#94A3B8; text-align:center;'>Powered by Gemini AI</div>",
+        unsafe_allow_html=True
+    )
 
-lang = st.sidebar.selectbox("🌐 اختر اللغة / Choose Language", ["العربية", "English"])
+is_rtl = lang == "العربية"
 
-if lang == "العربية":
-    direction = "rtl"
-    text_align = "right"
-    align_css = """
-    <style>
-    body, .stApp { direction: rtl; text-align: right; }
-    .stTextInput > div > div > input, .stTextArea > div > textarea { text-align: right; direction: rtl; }
-    div[data-baseweb="input"] { text-align: right; }
-    .stAlert { direction: rtl; text-align: right; }
-    </style>
-    """
-else:
-    direction = "ltr"
-    text_align = "left"
-    align_css = """
-    <style>
-    body, .stApp { direction: ltr; text-align: left; }
-    .stTextInput > div > div > input, .stTextArea > div > textarea { text-align: left; direction: ltr; }
-    div[data-baseweb="input"] { text-align: left; }
-    .stAlert { direction: ltr; text-align: left; }
-    </style>
-    """
+# ─── Global CSS ────────────────────────────────────────────────────────────────
+direction   = "rtl" if is_rtl else "ltr"
+text_align  = "right" if is_rtl else "left"
 
-st.markdown(align_css, unsafe_allow_html=True)
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    html, body, [data-testid="stMarkdownContainer"] { font-family: 'Inter', sans-serif; }
-    h1, h2, h3 { color: #1E3A8A; font-weight: 700; }
-    .stButton>button { background-color: #1E3A8A; color: white; border-radius: 8px; font-weight: 600; }
-    .stButton>button:hover { background-color: #1D4ED8; color: white; }
-    .job-card { background-color: #F8FAFC; padding: 15px; border-radius: 8px; border-left: 5px solid #1E3A8A; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    </style>
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Base ─────────────────────────────────────────── */
+html, body, [data-testid="stAppViewContainer"] {{
+    direction: {direction};
+    font-family: {"'Cairo'" if is_rtl else "'Inter'"}, sans-serif;
+    background: #F0F4FF;
+}}
+
+/* ── Sidebar ─────────────────────────────────────── */
+[data-testid="stSidebar"] {{
+    background: linear-gradient(160deg, #0F172A 0%, #1E3A8A 100%);
+}}
+[data-testid="stSidebar"] * {{
+    color: #E2E8F0 !important;
+}}
+
+/* ── Headings ────────────────────────────────────── */
+h1, h2, h3 {{
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.5px;
+}}
+
+/* ── Buttons ─────────────────────────────────────── */
+.stButton > button {{
+    background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 0.6rem 1.4rem;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+}}
+.stButton > button:hover {{
+    background: linear-gradient(135deg, #1D4ED8, #60A5FA);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(59,130,246,0.4);
+}}
+
+/* ── Form inputs ─────────────────────────────────── */
+.stTextInput > div > div > input,
+.stTextArea > div > textarea {{
+    direction: {direction};
+    text-align: {text_align};
+    border-radius: 8px;
+    border: 1.5px solid #CBD5E1;
+    background: #fff;
+    font-family: {"'Cairo'" if is_rtl else "'Inter'"}, sans-serif;
+    font-size: 15px;
+    padding: 10px 14px;
+}}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > textarea:focus {{
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}}
+
+/* ── Cards ───────────────────────────────────────── */
+.job-card {{
+    background: #fff;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border-{("right" if is_rtl else "left")}: 4px solid #3B82F6;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+    direction: {direction};
+    text-align: {text_align};
+}}
+.job-card:hover {{
+    box-shadow: 0 4px 16px rgba(59,130,246,0.15);
+}}
+
+/* ── Hero banner ─────────────────────────────────── */
+.hero-banner {{
+    background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 60%, #3B82F6 100%);
+    border-radius: 16px;
+    padding: 36px 40px;
+    color: white;
+    margin-bottom: 28px;
+    direction: {direction};
+    text-align: {text_align};
+}}
+.hero-banner h1 {{
+    color: white;
+    font-size: 2rem;
+    margin-bottom: 6px;
+}}
+.hero-banner p {{
+    color: #BAE6FD;
+    font-size: 1rem;
+    margin: 0;
+}}
+
+/* ── Stat badge ─────────────────────────────────── */
+.stat-badge {{
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    color: #E0F2FE;
+    margin-top: 14px;
+}}
+
+/* ── Section card ────────────────────────────────── */
+.section-card {{
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 20px;
+    direction: {direction};
+    text-align: {text_align};
+}}
+
+/* ── Resume output ───────────────────────────────── */
+.resume-output {{
+    background: #F8FAFF;
+    border: 1px solid #DBEAFE;
+    border-radius: 12px;
+    padding: 24px;
+    font-size: 15px;
+    line-height: 1.9;
+    direction: {direction};
+    text-align: {text_align};
+}}
+
+/* ── Admin table ─────────────────────────────────── */
+.dataframe {{ font-size: 14px; }}
+
+/* ── Alerts ──────────────────────────────────────── */
+.stAlert {{ direction: {direction}; text-align: {text_align}; border-radius: 10px; }}
+
+/* ── LinkedIn button ─────────────────────────────── */
+.linkedin-btn {{
+    display: block;
+    background: #0A66C2;
+    color: white !important;
+    text-decoration: none;
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 20px;
+    transition: background 0.2s;
+}}
+.linkedin-btn:hover {{ background: #004182; }}
+
+/* ── Quota bar ───────────────────────────────────── */
+.quota-bar {{
+    background: #E0E7FF;
+    border-radius: 20px;
+    height: 8px;
+    margin-top: 6px;
+    overflow: hidden;
+}}
+.quota-fill {{
+    height: 8px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #3B82F6, #6366F1);
+    transition: width 0.4s;
+}}
+</style>
 """, unsafe_allow_html=True)
 
-ui_text = {
+
+# ─── UI Text ───────────────────────────────────────────────────────────────────
+ui = {
     "العربية": {
-        "login_title": "تسجيل الدخول للمنصة 🔐",
-        "login_info": "قم بإنشاء حساب جديد أو تسجيل الدخول للبدء في استخدام المنصة.",
-        "email": "البريد الإلكتروني",
-        "password": "كلمة المرور",
-        "login_btn": "تسجيل الدخول",
-        "signup_btn": "إنشاء حساب جديد",
-        "logout": "تسجيل الخروج",
-        "main_title": "بوابة صياغة السيرة الذاتية وترشيحات الوظائف 🚀",
-        "welcome": "👤 مرحباً: {email} | 📊 الاستخدام: {count}/3 محاولات مجانية.",
-        "quota_error": "⛔ لقد استنفدت الحد الأقصى للمحاولات المجانية. يرجى التواصل مع الإدارة.",
-        "form_header": "أدخل بياناتك المهنية الحالية:",
-        "name": "الاسم الكامل",
-        "job_title": "المسمى الوظيفي المستهدف (مثال: Production Manager)",
-        "location": "المنطقة الحالية أو المستهدفة (مثال: Cairo)",
-        "exp": "الخبرات العملية باختصار (أماكن العمل السابقة والمهام)",
-        "skills": "أهم المهارات التي تتقنها",
-        "submit_btn": "توليد السيرة الذاتية الذكية والبحث عن وظائف",
-        "loading_ai": "جاري صياغة وتحسين السيرة الذاتية بواسطة الذكاء الاصطناعي...",
-        "loading_jobs": "جاري فحص سوق العمل وسحب الوظائف الحالية...",
-        "wuzzuf_header": "وظائف مقترحة لك من منصة Wuzzuf:",
-        "no_jobs": "لم نجد وظائف مطابقة حالياً على وظف.",
-        "linkedin_btn": "💼 عرض الوظائف المتاحة مباشرة على LinkedIn",
-        "admin_title": "⚙️ لوحة تحكم الإدارة (Admin Dashboard)",
-        "ai_prompt": "أنت خبير موارد بشرية محترف ومستشار تطوير مؤسسي. قم بإعادة صياغة وتنظيم البيانات التالية لتكوين سيرة ذاتية احترافية وجذابة للغاية ومجهزة لأنظمة الـ ATS باللغة العربية.\nالاسم: {name}\nالمسمى الوظيفي: {job_title}\nالخبرات: {experience}\nالمهارات: {skills}\nنسقها في نقاط احترافية وركز على الكلمات المفتاحية القوية."
+        "login_title":   "مرحباً بك في بوابة التوظيف الذكية 💼",
+        "login_sub":     "سجّل الدخول أو أنشئ حسابًا جديدًا للبدء.",
+        "email":         "البريد الإلكتروني",
+        "password":      "كلمة المرور",
+        "login_btn":     "تسجيل الدخول",
+        "signup_btn":    "إنشاء حساب جديد",
+        "logout":        "خروج 🚪",
+        "main_title":    "بوابة التوظيف الذكية 🚀",
+        "main_sub":      "صيّغ سيرتك الذاتية باحترافية واعثر على أفضل الفرص الوظيفية",
+        "welcome":       "👤 {email}",
+        "usage":         "الاستخدام: {count} / 3 محاولات مجانية",
+        "quota_error":   "⛔ استنفدت حدّك المجاني. تواصل مع الإدارة للحصول على المزيد.",
+        "form_header":   "أدخل بياناتك المهنية",
+        "name":          "الاسم الكامل",
+        "job_title":     "المسمى الوظيفي المستهدف  (مثال: Production Manager)",
+        "location":      "المنطقة / الموقع  (مثال: Cairo)",
+        "exp":           "ملخص الخبرات العملية",
+        "skills":        "أبرز المهارات التقنية والشخصية",
+        "submit_btn":    "✨ توليد السيرة والبحث عن وظائف",
+        "loading_ai":    "الذكاء الاصطناعي يصيغ سيرتك...",
+        "loading_jobs":  "جاري فحص سوق العمل...",
+        "cv_header":     "✨ السيرة الذاتية المطوّرة",
+        "jobs_header":   "🎯 الفرص الوظيفية المقترحة",
+        "wuzzuf_header": "وظائف من منصة Wuzzuf:",
+        "no_jobs":       "لم نجد وظائف مطابقة حالياً.",
+        "linkedin_btn":  "💼 استعرض الوظائف على LinkedIn",
+        "admin_title":   "⚙️ لوحة تحكم المشرف",
+        "ai_prompt": (
+            "أنت خبير موارد بشرية محترف ومستشار مؤسسي متخصص في صياغة السير الذاتية. "
+            "أعد صياغة وتنسيق البيانات التالية لتكوين سيرة ذاتية احترافية جاهزة لأنظمة ATS باللغة العربية.\n"
+            "الاسم: {name}\n"
+            "المسمى الوظيفي: {job_title}\n"
+            "الخبرات: {experience}\n"
+            "المهارات: {skills}\n\n"
+            "استخدم نقاطًا احترافية، وأفعالًا قوية، وكلمات مفتاحية مؤثرة. رتّب الأقسام: الملخص المهني، الخبرات، المهارات."
+        ),
     },
     "English": {
-        "login_title": "Platform Login 🔐",
-        "login_info": "Create a new account or log in to start using the platform.",
-        "email": "Email Address",
-        "password": "Password",
-        "login_btn": "Log In",
-        "signup_btn": "Register New Account",
-        "logout": "Log Out",
-        "main_title": "AI-Powered Career Portal & Job Recommender 🚀",
-        "welcome": "👤 Welcome: {email} | 📊 Usage: {count}/3 free attempts.",
-        "quota_error": "⛔ You have exhausted your free attempts. Please contact admin for upgrade.",
-        "form_header": "Enter your professional details:",
-        "name": "Full Name",
-        "job_title": "Target Job Title (e.g., Production Manager)",
-        "location": "Location (e.g., Quesna, Menofia)",
-        "exp": "Brief Work Experience (Previous companies and roles)",
-        "skills": "Key Skills & Core Competencies",
-        "submit_btn": "Generate Smart CV & Find Jobs",
-        "loading_ai": "AI is crafting and optimizing your professional resume...",
-        "loading_jobs": "Scanning the job market and fetching live openings...",
-        "wuzzuf_header": "Recommended Openings from Wuzzuf:",
-        "no_jobs": "No matching jobs found on Wuzzuf at the moment.",
-        "linkedin_btn": "💼 View Live Job Openings on LinkedIn",
-        "admin_title": "⚙️ Admin Dashboard",
-        "ai_prompt": "You are an elite HR Expert and Executive Recruiter. Rewrite and optimize the following raw details into a world-class, ATS-friendly corporate resume in English.\nName: {name}\nJob Title: {job_title}\nExperience: {experience}\nSkills: {skills}\nFormat it beautifully using clean bullet points and powerful action verbs."
-    }
+        "login_title":   "Welcome to the AI Career Portal 💼",
+        "login_sub":     "Sign in or create an account to get started.",
+        "email":         "Email Address",
+        "password":      "Password",
+        "login_btn":     "Log In",
+        "signup_btn":    "Create Account",
+        "logout":        "Log Out 🚪",
+        "main_title":    "AI Career Portal 🚀",
+        "main_sub":      "Craft a world-class résumé and discover top job opportunities",
+        "welcome":       "👤 {email}",
+        "usage":         "Usage: {count} / 3 free attempts",
+        "quota_error":   "⛔ Free limit reached. Contact admin to unlock more attempts.",
+        "form_header":   "Enter Your Professional Details",
+        "name":          "Full Name",
+        "job_title":     "Target Job Title  (e.g., Production Manager)",
+        "location":      "Location  (e.g., Cairo, Egypt)",
+        "exp":           "Work Experience Summary",
+        "skills":        "Key Skills & Competencies",
+        "submit_btn":    "✨ Generate Résumé & Find Jobs",
+        "loading_ai":    "AI is crafting your résumé…",
+        "loading_jobs":  "Scanning the job market…",
+        "cv_header":     "✨ Optimised Résumé",
+        "jobs_header":   "🎯 Recommended Opportunities",
+        "wuzzuf_header": "Live openings on Wuzzuf:",
+        "no_jobs":       "No matching jobs found on Wuzzuf right now.",
+        "linkedin_btn":  "💼 View Jobs on LinkedIn",
+        "admin_title":   "⚙️ Admin Dashboard",
+        "ai_prompt": (
+            "You are an elite HR Expert and Executive Recruiter. "
+            "Rewrite the following details into a world-class, ATS-optimised résumé in English.\n"
+            "Name: {name}\nJob Title: {job_title}\nExperience: {experience}\nSkills: {skills}\n\n"
+            "Use clean bullet points, strong action verbs, and impactful keywords. "
+            "Sections: Professional Summary, Work Experience, Skills."
+        ),
+    },
 }[lang]
 
-if 'user' not in st.session_state:
+# ─── Session state ─────────────────────────────────────────────────────────────
+if "user" not in st.session_state:
     st.session_state.user = None
 
-# --- 3. شاشة تسجيل الدخول ---
-if st.session_state.user is None:
-    st.title(ui_text["login_title"])
-    st.info(ui_text["login_info"])
-    
-    with st.form("login_form"):
-        email = st.text_input(ui_text["email"])
-        password = st.text_input(ui_text["password"], type="password")
-        col1, col2 = st.columns(2)
-        with col1:
-            login_btn = st.form_submit_button(ui_text["login_btn"])
-        with col2:
-            signup_btn = st.form_submit_button(ui_text["signup_btn"])
-            
-    if signup_btn:
-        try:
-            res = supabase.auth.sign_up({"email": email, "password": password})
-            st.success("Success! Account created. Please click Log In now.")
-            if res.user:
-               supabase.table("user_profiles").insert({"id": res.user.id, "email": email}).execute()
-        except Exception as e:
-            st.error("Error creating account. Ensure valid email and min 6 characters password.")
-            
-    if login_btn:
-        try:
-            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-            st.session_state.user = res.user
-            st.rerun() 
-        except Exception as e:
-            st.error("Authentication failed. Please check your credentials.")
 
-# --- 4. الشاشة الرئيسية بعد الدخول ---
+# ═══════════════════════════════════════════════════════════════════════════════
+#  LOGIN SCREEN
+# ═══════════════════════════════════════════════════════════════════════════════
+if st.session_state.user is None:
+
+    col_c, col_m, col_c2 = st.columns([1, 2, 1])
+    with col_m:
+        st.markdown(f"""
+        <div class="section-card" style="margin-top:60px; text-align:center;">
+            <div style="font-size:52px; margin-bottom:12px;">💼</div>
+            <h1 style="font-size:1.6rem; margin-bottom:6px;">{ui["login_title"]}</h1>
+            <p style="color:#64748B; margin-bottom:28px;">{ui["login_sub"]}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.form("login_form"):
+            email    = st.text_input(ui["email"],    placeholder="you@example.com")
+            password = st.text_input(ui["password"], type="password", placeholder="••••••••")
+            c1, c2   = st.columns(2)
+            with c1:
+                login_btn  = st.form_submit_button(ui["login_btn"],  use_container_width=True)
+            with c2:
+                signup_btn = st.form_submit_button(ui["signup_btn"], use_container_width=True)
+
+        if signup_btn and email:
+            try:
+                res = supabase.auth.sign_up({"email": email, "password": password})
+                st.success("✅ Account created. Click Log In to continue.")
+                if res.user:
+                    supabase.table("user_profiles").insert({"id": res.user.id, "email": email}).execute()
+            except Exception:
+                st.error("Could not create account. Check email format and use ≥6-character password.")
+
+        if login_btn and email:
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.rerun()
+            except Exception:
+                st.error("Login failed. Please verify your credentials.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  MAIN APP
+# ═══════════════════════════════════════════════════════════════════════════════
 else:
-    col_a, col_b = st.columns([8, 2])
-    with col_a:
-        st.title(ui_text["main_title"])
-    with col_b:
-        if st.button(ui_text["logout"], use_container_width=True):
+    # ── Load user profile ──────────────────────────────────────────────────────
+    try:
+        profile     = supabase.table("user_profiles").select("*").eq("id", st.session_state.user.id).execute()
+        usage_count = profile.data[0]["usage_count"]
+        role        = profile.data[0]["role"]
+    except Exception:
+        usage_count = 0
+        role        = "user"
+
+    # ── Hero Banner ────────────────────────────────────────────────────────────
+    quota_pct = min(int(usage_count / 3 * 100), 100)
+    st.markdown(f"""
+    <div class="hero-banner">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h1>{ui["main_title"]}</h1>
+                <p>{ui["main_sub"]}</p>
+                <div class="stat-badge">{ui["welcome"].format(email=st.session_state.user.email)}</div>
+            </div>
+            <div style="min-width:180px;">
+                <div style="font-size:13px; color:#BAE6FD; margin-bottom:4px;">{ui["usage"].format(count=usage_count)}</div>
+                <div class="quota-bar"><div class="quota-fill" style="width:{quota_pct}%;"></div></div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Logout in sidebar
+    with st.sidebar:
+        if st.button(ui["logout"], use_container_width=True):
             supabase.auth.sign_out()
             st.session_state.user = None
             st.rerun()
 
-    try:
-        profile = supabase.table("user_profiles").select("*").eq("id", st.session_state.user.id).execute()
-        usage_count = profile.data[0]['usage_count']
-        role = profile.data[0]['role']
-    except Exception as e:
-        usage_count = 0
-        role = 'user'
+    # ── Admin Dashboard ────────────────────────────────────────────────────────
+    if role == "admin":
+        with st.expander(ui["admin_title"], expanded=False):
+            users_data = supabase.table("user_profiles").select("*").execute()
+            if users_data.data:
+                df = pd.DataFrame(users_data.data)[["email", "role", "usage_count", "created_at"]]
+                df.columns = ["Email", "Role", "Usage", "Registered"]
+                st.dataframe(df, use_container_width=True, hide_index=True)
 
-    st.info(ui_text["welcome"].format(email=st.session_state.user.email, count=usage_count))
+    # ── Quota guard ────────────────────────────────────────────────────────────
+    if usage_count >= 3 and role != "admin":
+        st.error(ui["quota_error"])
+        st.stop()
 
-    if role == 'admin':
-        st.write("---")
-        st.subheader(ui_text["admin_title"])
-        users_data = supabase.table("user_profiles").select("*").execute()
-        if users_data.data:
-            df = pd.DataFrame(users_data.data)
-            df = df[['email', 'role', 'usage_count', 'created_at']]
-            df.columns = ['Email', 'Role', 'Usage Count', 'Registration Date']
-            st.dataframe(df, use_container_width=True)
-        st.write("---")
+    # ── Input Form ─────────────────────────────────────────────────────────────
+    st.markdown(f'<div class="section-card"><h3>📝 {ui["form_header"]}</h3>', unsafe_allow_html=True)
+    with st.form("cv_form"):
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
+            name      = st.text_input(ui["name"])
+        with r1c2:
+            job_title = st.text_input(ui["job_title"])
 
-    if usage_count >= 3 and role != 'admin':
-        st.error(ui_text["quota_error"])
-    else:
-        with st.form("cv_form"):
-            st.subheader(ui_text["form_header"])
-            name = st.text_input(ui_text["name"])
-            job_title = st.text_input(ui_text["job_title"])
-            location = st.text_input(ui_text["location"])
-            experience = st.text_area(ui_text["exp"])
-            skills = st.text_area(ui_text["skills"])
-            submitted = st.form_submit_button(ui_text["submit_btn"])
+        location   = st.text_input(ui["location"])
+        experience = st.text_area(ui["exp"],    height=130)
+        skills     = st.text_area(ui["skills"], height=110)
 
-        if submitted and name and job_title:
-            new_count = usage_count + 1
-            supabase.table("user_profiles").update({"usage_count": new_count}).eq("id", st.session_state.user.id).execute()
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("✨ Optimized Resume / السيرة الذاتية المطورة")
-                with st.spinner(ui_text["loading_ai"]):
-                    prompt = ui_text["ai_prompt"].format(name=name, job_title=job_title, experience=experience, skills=skills)
-                    try:
-                        # --- الحل الجذري لمشكلة مفاتيح AQ الجديدة من جوجل ---
-                        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-                        
-                        # المحاولة الأولى: إرسال المفتاح في هيدر x-goog-api-key
-                        headers = {
-                            'x-goog-api-key': GEMINI_API_KEY,
-                            'Content-Type': 'application/json'
-                        }
-                        data = {"contents": [{"parts": [{"text": prompt}]}]}
-                        
-                        response = requests.post(url, headers=headers, json=data)
-                        result = response.json()
-                        
-                        # المحاولة الثانية: لو جوجل اتلخبطت واعتبرته OAuth Token (الخطأ الشهير)
-                        if 'error' in result and result['error']['code'] == 401:
-                            headers_alt = {
-                                'Authorization': f'Bearer {GEMINI_API_KEY}',
-                                'Content-Type': 'application/json'
-                            }
-                            response = requests.post(url, headers=headers_alt, json=data)
-                            result = response.json()
-                            
-                        if 'error' in result:
-                            st.error(f"خطأ من سيرفرات جوجل: {result['error']['message']}")
-                            st.info("💡 ملاحظة: يبدو أن حساب جوجل الخاص بك عالق في التحديث الأخير. كحل نهائي وبسيط، قم بإنشاء إيميل Gmail جديد تماماً، واستخرج منه مفتاح جديد من Google AI Studio، وسيعمل معك فوراً.")
-                        else:
-                            ai_text = result['candidates'][0]['content']['parts'][0]['text']
-                            st.markdown(ai_text)
-                    except Exception as e:
-                        st.error(f"حدث خطأ في الاتصال: {str(e)}")
+        submitted = st.form_submit_button(ui["submit_btn"], use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-            with col2:
-                st.subheader("🎯 Job Opportunities / الفرص المتاحة")
-                with st.spinner(ui_text["loading_jobs"]):
-                    try:
-                        linkedin_query = urllib.parse.quote(job_title)
-                        linkedin_loc = urllib.parse.quote(location)
-                        linkedin_link = f"https://www.linkedin.com/jobs/search/?keywords={linkedin_query}&location={linkedin_loc}"
-                        st.markdown(f'<a href="{linkedin_link}" target="_blank"><button style="width:100%; background-color:#0A66C2; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:20px;">{ui_text["linkedin_btn"]}</button></a>', unsafe_allow_html=True)
-                        
-                        st.markdown(f"<h5>{ui_text['wuzzuf_header']}</h5>", unsafe_allow_html=True)
-                        
-                        query = urllib.parse.quote(f"{job_title} {location}")
-                        url = f"https://wuzzuf.net/search/jobs/?q={query}&a=hpb"
-                        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
-                        soup = BeautifulSoup(res.text, "html.parser")
-                        
-                        job_cards = soup.find_all("div", class_="css-1gatmva e1v1l3u10", limit=5)
-                        if not job_cards:
-                            st.warning(ui_text["no_jobs"])
-                        else:
-                            for card in job_cards:
-                                title_elem = card.find("h2", class_="css-m604qf")
-                                company_elem = card.find("a", class_="css-17s97q8")
-                                if title_elem and company_elem:
-                                    job_link = "https://wuzzuf.net" + title_elem.find("a")["href"]
-                                    st.markdown(f"""
-                                        <div class="job-card">
-                                            <a href="{job_link}" target="_blank" style="color:#1E3A8A; font-weight:bold; text-decoration:none;">{title_elem.text.strip()}</a>
-                                            <div style="color:#64748B; font-size:13px; margin-top:5px;">🏢 {company_elem.text.strip().replace(' -', '')}</div>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error("Market Scraping Error.")
+    # ── Results ────────────────────────────────────────────────────────────────
+    if submitted and name and job_title:
+        new_count = usage_count + 1
+        supabase.table("user_profiles").update({"usage_count": new_count}).eq("id", st.session_state.user.id).execute()
+
+        col1, col2 = st.columns([1, 1], gap="large")
+
+        # ── Left: AI Resume ──────────────────────────────────────────────────
+        with col1:
+            st.markdown(f'<div class="section-card"><h3>{ui["cv_header"]}</h3>', unsafe_allow_html=True)
+            with st.spinner(ui["loading_ai"]):
+                prompt = ui["ai_prompt"].format(
+                    name=name, job_title=job_title,
+                    experience=experience, skills=skills
+                )
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                    headers = {"Content-Type": "application/json"}
+                    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+
+                    resp   = requests.post(url, headers=headers, json=payload, timeout=30)
+                    result = resp.json()
+
+                    if "error" in result:
+                        st.error(f"Gemini error: {result['error'].get('message', 'Unknown error')}")
+                    else:
+                        ai_text = result["candidates"][0]["content"]["parts"][0]["text"]
+                        st.markdown(
+                            f'<div class="resume-output">{ai_text.replace(chr(10), "<br>")}</div>',
+                            unsafe_allow_html=True
+                        )
+                except Exception as e:
+                    st.error(f"Connection error: {e}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Right: Jobs ──────────────────────────────────────────────────────
+        with col2:
+            st.markdown(f'<div class="section-card"><h3>{ui["jobs_header"]}</h3>', unsafe_allow_html=True)
+            with st.spinner(ui["loading_jobs"]):
+                # LinkedIn button
+                li_q   = urllib.parse.quote(job_title)
+                li_loc = urllib.parse.quote(location)
+                li_url = f"https://www.linkedin.com/jobs/search/?keywords={li_q}&location={li_loc}"
+                st.markdown(
+                    f'<a class="linkedin-btn" href="{li_url}" target="_blank">{ui["linkedin_btn"]}</a>',
+                    unsafe_allow_html=True
+                )
+
+                # Wuzzuf scraping
+                st.markdown(f"<p style='font-weight:600; margin-bottom:10px;'>{ui['wuzzuf_header']}</p>", unsafe_allow_html=True)
+                try:
+                    q       = urllib.parse.quote(f"{job_title} {location}")
+                    wurl    = f"https://wuzzuf.net/search/jobs/?q={q}&a=hpb"
+                    wres    = requests.get(wurl, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+                    soup    = BeautifulSoup(wres.text, "html.parser")
+                    cards   = soup.find_all("div", class_="css-1gatmva e1v1l3u10", limit=5)
+
+                    if not cards:
+                        st.info(ui["no_jobs"])
+                    else:
+                        for card in cards:
+                            title_el   = card.find("h2", class_="css-m604qf")
+                            company_el = card.find("a", class_="css-17s97q8")
+                            if title_el and company_el:
+                                job_link    = "https://wuzzuf.net" + title_el.find("a")["href"]
+                                job_name    = title_el.text.strip()
+                                company_name = company_el.text.strip().replace(" -", "")
+                                st.markdown(f"""
+                                <div class="job-card">
+                                    <a href="{job_link}" target="_blank"
+                                       style="color:#1E3A8A; font-weight:700; font-size:15px; text-decoration:none;">
+                                        {job_name}
+                                    </a>
+                                    <div style="color:#64748B; font-size:13px; margin-top:6px;">🏢 {company_name}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                except Exception:
+                    st.warning(ui["no_jobs"])
+            st.markdown("</div>", unsafe_allow_html=True)
