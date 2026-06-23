@@ -209,7 +209,7 @@ else:
                         response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
                         st.markdown(response.text)
                     except Exception as e:
-                        st.error("AI Generation Error.")
+    st.error(f"تفاصيل الخطأ من جوجل: {str(e)}")
 
             # عمود ترشيحات الوظائف وسحب البيانات اللحظي
             with col2:
