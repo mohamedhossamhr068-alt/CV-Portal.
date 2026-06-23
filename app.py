@@ -17,10 +17,8 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # --- 2. إدارة اللغتين والتحكم في المظهر الاحترافي ---
 st.set_page_config(page_title="AI Career Portal", page_icon="💼", layout="wide")
 
-# اختيار اللغة من القائمة الجانبية
 lang = st.sidebar.selectbox("🌐 اختر اللغة / Choose Language", ["العربية", "English"])
 
-# حقن كود CSS لتنسيق المظهر واتجاه النصوص بناءً على اختيار اللغة
 if lang == "العربية":
     direction = "rtl"
     text_align = "right"
@@ -44,7 +42,6 @@ else:
     </style>
     """
 
-# تطبيق التنسيق ومظهر كروت الشركات الاحترافية
 st.markdown(align_css, unsafe_allow_html=True)
 st.markdown("""
     <style>
@@ -57,7 +54,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# قاموس الكلمات للتحويل الفوري بين اللغتين
 ui_text = {
     "العربية": {
         "login_title": "تسجيل الدخول للمنصة 🔐",
@@ -168,7 +164,6 @@ else:
 
     st.info(ui_text["welcome"].format(email=st.session_state.user.email, count=usage_count))
 
-    # لوحة تحكم الإدارة الاحترافية للـ Admin
     if role == 'admin':
         st.write("---")
         st.subheader(ui_text["admin_title"])
@@ -180,7 +175,6 @@ else:
             st.dataframe(df, use_container_width=True)
         st.write("---")
 
-    # التحقق من كوتة الاستخدام
     if usage_count >= 3 and role != 'admin':
         st.error(ui_text["quota_error"])
     else:
@@ -194,13 +188,11 @@ else:
             submitted = st.form_submit_button(ui_text["submit_btn"])
 
         if submitted and name and job_title:
-            # تحديث الاستخدام
             new_count = usage_count + 1
             supabase.table("user_profiles").update({"usage_count": new_count}).eq("id", st.session_state.user.id).execute()
             
             col1, col2 = st.columns(2)
             
-            # عمود السيرة الذاتية الذكية
             with col1:
                 st.subheader("✨ Optimized Resume / السيرة الذاتية المطورة")
                 with st.spinner(ui_text["loading_ai"]):
@@ -209,14 +201,12 @@ else:
                         response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
                         st.markdown(response.text)
                     except Exception as e:
-    st.error(f"تفاصيل الخطأ من جوجل: {str(e)}")
+                        st.error(f"تفاصيل الخطأ من جوجل: {str(e)}")
 
-            # عمود ترشيحات الوظائف وسحب البيانات اللحظي
             with col2:
                 st.subheader("🎯 Job Opportunities / الفرص المتاحة")
                 with st.spinner(ui_text["loading_jobs"]):
                     try:
-                        # إنشاء رابط LinkedIn الذكي
                         linkedin_query = urllib.parse.quote(job_title)
                         linkedin_loc = urllib.parse.quote(location)
                         linkedin_link = f"https://www.linkedin.com/jobs/search/?keywords={linkedin_query}&location={linkedin_loc}"
@@ -224,7 +214,6 @@ else:
                         
                         st.markdown(f"<h5>{ui_text['wuzzuf_header']}</h5>", unsafe_allow_html=True)
                         
-                        # سحب وظائف Wuzzuf
                         query = urllib.parse.quote(f"{job_title} {location}")
                         url = f"https://wuzzuf.net/search/jobs/?q={query}&a=hpb"
                         res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
