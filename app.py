@@ -482,3 +482,4 @@ else:
                 except Exception:
                     st.warning(ui["no_jobs"])
             st.markdown("</div>", unsafe_allow_html=True)
+
