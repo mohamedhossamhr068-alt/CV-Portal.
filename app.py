@@ -196,17 +196,31 @@ else:
                 with st.spinner(ui_text["loading_ai"]):
                     prompt = ui_text["ai_prompt"].format(name=name, job_title=job_title, experience=experience, skills=skills)
                     try:
-                        # استدعاء مباشر لـ REST API الخاص بجوجل لتخطي أخطاء المكتبة مع مفاتيح AQ
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-                        headers = {'Content-Type': 'application/json'}
-                        data = {
-                            "contents": [{"parts": [{"text": prompt}]}]
+                        # --- الحل الجذري لمشكلة مفاتيح AQ الجديدة من جوجل ---
+                        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+                        
+                        # المحاولة الأولى: إرسال المفتاح في هيدر x-goog-api-key
+                        headers = {
+                            'x-goog-api-key': GEMINI_API_KEY,
+                            'Content-Type': 'application/json'
                         }
+                        data = {"contents": [{"parts": [{"text": prompt}]}]}
+                        
                         response = requests.post(url, headers=headers, json=data)
                         result = response.json()
                         
+                        # المحاولة الثانية: لو جوجل اتلخبطت واعتبرته OAuth Token (الخطأ الشهير)
+                        if 'error' in result and result['error']['code'] == 401:
+                            headers_alt = {
+                                'Authorization': f'Bearer {GEMINI_API_KEY}',
+                                'Content-Type': 'application/json'
+                            }
+                            response = requests.post(url, headers=headers_alt, json=data)
+                            result = response.json()
+                            
                         if 'error' in result:
-                            st.error(f"خطأ من جوجل: {result['error']['message']}")
+                            st.error(f"خطأ من سيرفرات جوجل: {result['error']['message']}")
+                            st.info("💡 ملاحظة: يبدو أن حساب جوجل الخاص بك عالق في التحديث الأخير. كحل نهائي وبسيط، قم بإنشاء إيميل Gmail جديد تماماً، واستخرج منه مفتاح جديد من Google AI Studio، وسيعمل معك فوراً.")
                         else:
                             ai_text = result['candidates'][0]['content']['parts'][0]['text']
                             st.markdown(ai_text)
