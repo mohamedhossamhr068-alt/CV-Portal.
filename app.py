@@ -1,5 +1,4 @@
 import streamlit as st
-from google import genai
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
@@ -12,7 +11,6 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = genai.Client(api_key=GEMINI_API_KEY)
 
 # --- 2. إدارة اللغتين والتحكم في المظهر الاحترافي ---
 st.set_page_config(page_title="AI Career Portal", page_icon="💼", layout="wide")
@@ -198,10 +196,22 @@ else:
                 with st.spinner(ui_text["loading_ai"]):
                     prompt = ui_text["ai_prompt"].format(name=name, job_title=job_title, experience=experience, skills=skills)
                     try:
-                        response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
-                        st.markdown(response.text)
+                        # استدعاء مباشر لـ REST API الخاص بجوجل لتخطي أخطاء المكتبة مع مفاتيح AQ
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                        headers = {'Content-Type': 'application/json'}
+                        data = {
+                            "contents": [{"parts": [{"text": prompt}]}]
+                        }
+                        response = requests.post(url, headers=headers, json=data)
+                        result = response.json()
+                        
+                        if 'error' in result:
+                            st.error(f"خطأ من جوجل: {result['error']['message']}")
+                        else:
+                            ai_text = result['candidates'][0]['content']['parts'][0]['text']
+                            st.markdown(ai_text)
                     except Exception as e:
-                        st.error(f"تفاصيل الخطأ من جوجل: {str(e)}")
+                        st.error(f"حدث خطأ في الاتصال: {str(e)}")
 
             with col2:
                 st.subheader("🎯 Job Opportunities / الفرص المتاحة")
